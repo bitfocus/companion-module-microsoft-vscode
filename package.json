@@ -1,0 +1,24 @@
+{
+    "name": "microsoft-vscode",
+    "version": "1.0.0",
+    "main": "out/main.js",
+    "scripts": {
+        "build": "tsc",
+        "watch": "tsc --watch"
+    },
+    "license": "MIT",
+    "repository": {
+        "type": "git",
+        "url": ""
+    },
+    "dependencies": {
+        "@companion-module/base": "~1.0.1",
+        "ws": "^8.12.1"
+    },
+    "devDependencies": {
+        "@companion-module/tools": "^0.5.1",
+        "@types/node": "^18.14.6",
+        "@types/ws": "^8.5.4",
+        "typescript": "^4.9.5"
+    }
+}
