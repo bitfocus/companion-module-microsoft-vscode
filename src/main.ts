@@ -1,6 +1,7 @@
 import { InstanceBase, InstanceStatus, runEntrypoint, SomeCompanionConfigField } from "@companion-module/base";
 import { Actions } from "./actions";
 import { Config, DefaultConfig, GetConfig } from "./config";
+import { GetFeedbacks } from "./feedbacks";
 import { Socket } from "./socket";
 import { GetVariables } from "./variables";
 
@@ -23,6 +24,7 @@ export class ModuleInstance extends InstanceBase<Config> {
     async init(config: Config, isFirstInit: boolean) {
         // Set initial definitions
         this.setVariableDefinitions(GetVariables());
+        this.setFeedbackDefinitions(GetFeedbacks((name) => this.getVariableValue(name)?.toString()));
         this.setActionDefinitions(this.actions.getOtherActions());
 
         // Handle as config change
@@ -88,6 +90,8 @@ export class ModuleInstance extends InstanceBase<Config> {
             this.setVariableValues({ commands: message.list.length });
             this.actions.setCommands(message.list);
         }
+
+        this.checkFeedbacks();
     }
 }
 
