@@ -16,7 +16,7 @@ export class ModuleInstance extends InstanceBase<Config> {
 
         this.actions = new Actions(
             (d) => this.setActionDefinitions(d),
-            (command) => this.socket?.send("run-command", { command })
+            (action, payload) => this.socket?.send(action, payload)
         );
     }
 

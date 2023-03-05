@@ -2,13 +2,13 @@ import { CompanionActionDefinitions, DropdownChoice } from "@companion-module/ba
 
 export class Actions {
     private setActions: (actions: CompanionActionDefinitions) => void;
-    private runCommand: (command: string) => void;
+    private send: (action: string, payload: any) => void;
     private groupedCommands: Map<string, DropdownChoice[]> = new Map();
     private commandsString: string = "";
 
-    constructor(setActions: (actions: CompanionActionDefinitions) => void, runCommand: (command: string) => void) {
+    constructor(setActions: (actions: CompanionActionDefinitions) => void, send: (a: string, p: any) => void) {
         this.setActions = setActions;
-        this.runCommand = runCommand;
+        this.send = send;
     }
 
     setCommands(commands: string[]) {
@@ -44,6 +44,8 @@ export class Actions {
 
         // Fill actions
         for (const group of this.groupedCommands.keys()) {
+            const groupPrefix = group === "default" ? "" : group + ".";
+
             actions["run_command_" + group] = {
                 name: `Run ${group} command`,
                 options: [
@@ -56,9 +58,9 @@ export class Actions {
                     },
                 ],
                 callback: (action) =>
-                    this.runCommand(
-                        (group === "default" ? "" : group + ".") + action.options.command?.toString() ?? "noop"
-                    ),
+                    this.send("run-command", {
+                        command: groupPrefix + action.options.command?.toString() ?? "noop",
+                    }),
             };
         }
 
@@ -67,6 +69,41 @@ export class Actions {
     }
 
     getOtherActions(): CompanionActionDefinitions {
-        return {};
+        return {
+            alert: {
+                name: "Send notification",
+                options: [
+                    { id: "message", type: "textinput", label: "Message" },
+                    {
+                        id: "level",
+                        type: "dropdown",
+                        label: "Level",
+                        choices: [
+                            { id: "info", label: "Information" },
+                            { id: "warn", label: "Warning" },
+                            { id: "error", label: "Error" },
+                        ],
+                        default: "info",
+                    },
+                ],
+                callback: (action) =>
+                    this.send("alert", {
+                        message: action.options.message?.toString(),
+                        level: action.options.level?.toString(),
+                    }),
+            },
+            status: {
+                name: "Show status",
+                options: [
+                    { id: "message", type: "textinput", label: "Message" },
+                    { id: "timeout", type: "number", label: "Timeout (ms)", min: 0, max: 60000, default: 5000 },
+                ],
+                callback: (action) =>
+                    this.send("status", {
+                        message: action.options.message?.toString(),
+                        timeout: Number.parseInt(action.options.timeout!.toString()),
+                    }),
+            },
+        };
     }
 }
