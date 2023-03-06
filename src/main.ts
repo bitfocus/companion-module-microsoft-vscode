@@ -83,9 +83,13 @@ export class ModuleInstance extends InstanceBase<Config> {
     private handleMessage(type: string, message: any) {
         if (type === "get-version") {
             this.setVariableValues({ version: message.version });
-        } else if (type === "get-editor" && "editor" in message) {
-            const editor = message.editor;
-            this.setVariableValues({ language: editor.document.languageId, lines: editor.document.lineCount });
+        } else if (type === "get-editor") {
+            if ("editor" in message) {
+                const editor = message.editor;
+                this.setVariableValues({ language: editor.document.languageId, lines: editor.document.lineCount });
+            } else {
+                this.setVariableValues({ language: "none", lines: 0 });
+            }
         } else if (type === "list-commands") {
             this.setVariableValues({ commands: message.list.length });
             this.actions.setCommands(message.list);
