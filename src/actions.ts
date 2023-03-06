@@ -1,10 +1,9 @@
-import { CompanionActionDefinitions, DropdownChoice } from "@companion-module/base";
+import { CompanionActionDefinitions } from "@companion-module/base";
 
 export class Actions {
     private setActions: (actions: CompanionActionDefinitions) => void;
     private send: (action: string, payload: any) => void;
-    private groupedCommands: Map<string, DropdownChoice[]> = new Map();
-    private commandsString: string = "";
+    private commands: string[] = [];
 
     constructor(setActions: (actions: CompanionActionDefinitions) => void, send: (a: string, p: any) => void) {
         this.setActions = setActions;
@@ -13,62 +12,18 @@ export class Actions {
 
     setCommands(commands: string[]) {
         // Only update when command list changed
-        const str = JSON.stringify(commands);
-        if (str == this.commandsString) return;
-        this.commandsString = str;
+        if (JSON.stringify(commands) == JSON.stringify(this.commands)) return;
 
-        // Clear commands
-        this.groupedCommands.clear();
-
-        // Fill commands
-        for (const command of commands) {
-            // Get key from command
-            const period = command.indexOf(".");
-            const key = period === -1 ? "default" : command.substring(0, period);
-
-            // Make sure array exists
-            if (!this.groupedCommands.has(key)) this.groupedCommands.set(key, []);
-
-            // Add command to array
-            const name = command.substring(period + 1);
-            this.groupedCommands.get(key)?.push({ id: name, label: name });
-        }
+        // Set commands
+        this.commands = commands;
 
         // Regenerate actions
-        this.setActions({ ...this.getOtherActions(), ...this.getCommandActions() });
+        this.setActions({ ...this.getActions() });
     }
 
-    getCommandActions(): CompanionActionDefinitions {
-        // Create actions
-        let actions: CompanionActionDefinitions = {};
+    getActions(): CompanionActionDefinitions {
+        const commands = this.commands.map((command) => ({ id: command, label: command }));
 
-        // Fill actions
-        for (const group of this.groupedCommands.keys()) {
-            const groupPrefix = group === "default" ? "" : group + ".";
-
-            actions["run_command_" + group] = {
-                name: `Run ${group} command`,
-                options: [
-                    {
-                        id: "command",
-                        type: "dropdown",
-                        label: "Command",
-                        choices: this.groupedCommands.get(group)!,
-                        default: this.groupedCommands.get(group)![0].id,
-                    },
-                ],
-                callback: (action) =>
-                    this.send("run-command", {
-                        command: groupPrefix + action.options.command?.toString() ?? "noop",
-                    }),
-            };
-        }
-
-        // Return actions
-        return actions;
-    }
-
-    getOtherActions(): CompanionActionDefinitions {
         return {
             alert: {
                 name: "Send notification",
@@ -103,6 +58,12 @@ export class Actions {
                         message: action.options.message?.toString(),
                         timeout: Number.parseInt(action.options.timeout!.toString()),
                     }),
+            },
+            command: {
+                name: "Run command",
+                options: [{ id: "command", type: "dropdown", label: "Command", choices: commands, default: "noop" }],
+                callback: (action) =>
+                    this.send("run-command", { command: action.options.command?.toString() ?? "noop" }),
             },
         };
     }

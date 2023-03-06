@@ -25,7 +25,7 @@ export class ModuleInstance extends InstanceBase<Config> {
         // Set initial definitions
         this.setVariableDefinitions(GetVariables());
         this.setFeedbackDefinitions(GetFeedbacks((name) => this.getVariableValue(name)?.toString()));
-        this.setActionDefinitions(this.actions.getOtherActions());
+        this.setActionDefinitions(this.actions.getActions());
 
         // Handle as config change
         await this.configUpdated(config);
