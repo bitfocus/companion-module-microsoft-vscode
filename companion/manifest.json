@@ -3,7 +3,7 @@
     "name": "Microsoft VSCode",
     "shortname": "VSCode",
     "description": "Allows bitfocus companion to trigger commands in VSCode",
-    "version": "1.0.0",
+    "version": "0.0.0",
     "license": "MIT",
     "repository": "",
     "bugs": "",
@@ -22,5 +22,5 @@
     "legacyIds": [],
     "manufacturer": "Microsoft",
     "products": ["VSCode"],
-    "keywords": []
+    "keywords": ["Code", "Visual Studio Code"]
 }
