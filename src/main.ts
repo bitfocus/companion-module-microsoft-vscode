@@ -86,16 +86,18 @@ export class ModuleInstance extends InstanceBase<Config> {
         } else if (type === "get-editor") {
             if ("editor" in message) {
                 const editor = message.editor;
+                const prevLang = this.getVariableValue("language");
                 this.setVariableValues({ language: editor.document.languageId, lines: editor.document.lineCount });
+                if (this.getVariableValue("language") !== prevLang) this.checkFeedbacks();
             } else {
+                const changed = this.getVariableValue("language") !== "none";
                 this.setVariableValues({ language: "none", lines: 0 });
+                if (changed) this.checkFeedbacks();
             }
         } else if (type === "list-commands") {
             this.setVariableValues({ commands: message.list.length });
             this.actions.setCommands(message.list);
         }
-
-        this.checkFeedbacks();
     }
 }
 
