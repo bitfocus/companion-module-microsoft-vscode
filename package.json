@@ -9,7 +9,7 @@
     "license": "MIT",
     "repository": {
         "type": "git",
-        "url": ""
+        "url": "git+https://github.com/bitfocus/companion-module-microsoft-vscode"
     },
     "dependencies": {
         "@companion-module/base": "~1.0.1",
