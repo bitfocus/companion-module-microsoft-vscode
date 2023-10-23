@@ -61,9 +61,12 @@ export class Actions {
             },
             command: {
                 name: "Run command",
-                options: [{ id: "command", type: "dropdown", label: "Command", choices: commands, default: "noop" }],
+                options: [
+                    { id: "command", type: "dropdown", label: "Command", choices: commands, default: "noop" },
+                    { id: "args", type: "textinput", label: "Arguments", tooltip: "Some commands can take some additional arguments or options to prevent the need for additional. " }
+                ],
                 callback: (action) =>
-                    this.send("run-command", { command: action.options.command?.toString() ?? "noop" }),
+                    this.send("run-command", { command: action.options.command?.toString() ?? "noop", arguments: JSON.parse(action.options.args?.trim() || null) }),
             },
         };
     }
