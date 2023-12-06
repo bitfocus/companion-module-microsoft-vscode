@@ -12,6 +12,8 @@ export class ModuleInstance extends InstanceBase<Config> {
     private fetchCommands?: NodeJS.Timeout;
     private fetchState?: NodeJS.Timeout;
 
+    private previousStatusVariables: { [key: string]: any } = {};
+
     constructor(internal: any) {
         super(internal);
 
@@ -77,6 +79,21 @@ export class ModuleInstance extends InstanceBase<Config> {
         this.fetchState = setInterval(() => {
             this.socket?.send("get-version");
             this.socket?.send("get-editor");
+            // fetch status variables
+            GetVariables().forEach((variable) => {
+                // only for variables starting by status.*
+                if (variable.variableId.startsWith("status")) {
+                    // get status over the variableId
+                    const payload = {
+                        name: variable.variableId
+                    };
+
+                    // send the message with action 'get-status'
+                    this.socket?.send("get-status", payload);
+                }
+            });
+
+
         }, this.config.reloadState);
     }
 
@@ -97,6 +114,29 @@ export class ModuleInstance extends InstanceBase<Config> {
         } else if (type === "list-commands") {
             this.setVariableValues({ commands: message.list.length });
             this.actions.setCommands(message.list);
+        } else if (type === "get-status") {
+            const variableName = message.name;
+            const variableValue = message.value;
+
+            type Variables = { [key: string]: any };
+
+            // Check if the variable value has changed
+            if (!this.previousStatusVariables.hasOwnProperty(variableName) ||
+                 this.previousStatusVariables[variableName] !== variableValue) {
+                // Create an object to hold the variable and its value
+                const variables : Variables = {
+                    [variableName]: variableValue,
+                };
+
+                // Set the variable values
+                this.setVariableValues(variables);
+
+                // Update the previous value
+                this.previousStatusVariables[variableName] = variableValue;
+
+                // Trigger checkFeedbacks
+                this.checkFeedbacks();
+            }
         }
     }
 }
