@@ -113,11 +113,12 @@ class ModuleInstance extends InstanceBase<Config> {
 			})
 
 			// Get status information
-			for (const variable of variables.filter((v) => v.variableId.startsWith('status_')))
-				this.send({ action: 'get-status', name: variable.variableId }, (data) => {
-					this.setVariableValues({ [data.name]: data.value })
-					this.checkFeedbacks(...feedbackVariants(data.name))
-				})
+			this.send({ action: 'get-status' }, (data) => {
+				for (const key in data.value) {
+					this.setVariableValues({ [key]: data.value[key] })
+					this.checkFeedbacks(...feedbackVariants(key))
+				}
+			})
 		}, config.reloadState)
 
 		// Start commands reload timer
