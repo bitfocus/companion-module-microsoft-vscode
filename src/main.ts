@@ -1,144 +1,176 @@
-import { InstanceBase, InstanceStatus, runEntrypoint, SomeCompanionConfigField } from "@companion-module/base";
-import { Actions } from "./actions";
-import { Config, DefaultConfig, GetConfig } from "./config";
-import { GetFeedbacks } from "./feedbacks";
-import { Socket } from "./socket";
-import { GetVariables } from "./variables";
+import { InstanceBase, InstanceStatus, SomeCompanionConfigField, runEntrypoint } from '@companion-module/base'
+import { WebSocket } from 'ws'
+import { generateActions } from './actions'
+import { CONFIG, Config } from './config'
+import { decrypt, encrypt } from './crypto'
+import { feedbackVariants, generateFeedbacks } from './feedbacks'
+import { variables } from './variables'
 
-export class ModuleInstance extends InstanceBase<Config> {
-    private config: Config = DefaultConfig;
-    private socket?: Socket;
-    private actions: Actions;
-    private fetchCommands?: NodeJS.Timeout;
-    private fetchState?: NodeJS.Timeout;
+class ModuleInstance extends InstanceBase<Config> {
+	private socket: WebSocket | null = null
+	private password: string = ''
+	private callbacks: { [id: number]: (data: any) => void } = {}
+	private requestID: number = 0
+	private timerReconnect: NodeJS.Timeout | null = null
+	private timerReloadState: NodeJS.Timeout | null = null
+	private timerReloadCommands: NodeJS.Timeout | null = null
 
-    private previousStatusVariables: { [key: string]: any } = {};
+	async init(config: Config, isFirstInit: boolean) {
+		// Load definitions
+		this.setVariableDefinitions(variables)
+		this.setFeedbackDefinitions(generateFeedbacks((name) => this.getVariableValue(name)?.toString()))
+		this.setActionDefinitions(
+			generateActions(this.send.bind(this), this.setVariableValues.bind(this), this.reloadCommands.bind(this), [])
+		)
 
-    constructor(internal: any) {
-        super(internal);
+		// Start socket connection
+		await this.configUpdated(config)
+	}
 
-        this.actions = new Actions(
-            (d) => this.setActionDefinitions(d),
-            (action, payload) => this.socket?.send(action, payload)
-        );
-    }
+	async destroy() {
+		// Clear timers
+		if (this.timerReconnect) clearTimeout(this.timerReconnect)
+		if (this.timerReloadState) clearInterval(this.timerReloadState)
+		if (this.timerReloadCommands) clearInterval(this.timerReloadCommands)
 
-    async init(config: Config, isFirstInit: boolean) {
-        // Set initial definitions
-        this.setVariableDefinitions(GetVariables());
-        this.setFeedbackDefinitions(GetFeedbacks((name) => this.getVariableValue(name)?.toString()));
-        this.setActionDefinitions(this.actions.getActions());
+		// Close socket connection
+		if (this.socket) this.socket.close()
+	}
 
-        // Handle as config change
-        await this.configUpdated(config);
-    }
+	async configUpdated(config: Config) {
+		// Close existing socket connection
+		if (this.socket) this.socket.close()
 
-    async destroy() {
-        if (this.fetchCommands) clearInterval(this.fetchCommands);
-        if (this.fetchState) clearInterval(this.fetchState);
-        await this.socket?.shutdown();
-    }
+		// Set new password
+		this.password = config.password
 
-    async configUpdated(config: Config) {
-        // Set config
-        this.config = config;
+		// Start socket connection
+		this.socket = new WebSocket(`ws://${config.host}:${config.port}`)
+		this.updateStatus(InstanceStatus.Connecting)
 
-        // Restart socket
-        await this.socket?.shutdown();
-        this.socket = new Socket(
-            this.config,
-            (type: string, message: any) => this.handleMessage(type, message),
-            (status: InstanceStatus) => this.updateStatus(status)
-        );
+		// When socket opens, set instance status
+		this.socket.on('open', () => this.updateStatus(InstanceStatus.Ok))
 
-        // Restart fetch intervals
-        this.restartFetchIntervals();
-    }
+		// When socket closes, set instance status and try to reconnect
+		this.socket.on('close', () => {
+			// Set status
+			this.updateStatus(InstanceStatus.Disconnected)
+			this.socket = null
 
-    getConfigFields(): SomeCompanionConfigField[] {
-        return GetConfig();
-    }
+			// Reconnect
+			this.reconnect(config)
+		})
 
-    private restartFetchIntervals() {
-        // Restart command fetching
-        if (this.fetchCommands) {
-            clearInterval(this.fetchCommands);
-            delete this.fetchCommands;
-        }
+		// When socket fails, set instance status and try to reconnect
+		this.socket.on('error', () => {
+			// Set status
+			this.updateStatus(InstanceStatus.ConnectionFailure)
+			this.socket = null
 
-        this.fetchCommands = setInterval(() => {
-            this.socket?.send("list-commands");
-        }, this.config.reloadCommands);
+			// Reconnect
+			this.reconnect(config)
+		})
 
-        // Restart state fetching
-        if (this.fetchState) {
-            clearInterval(this.fetchState);
-            delete this.fetchState;
-        }
+		// When socket receives data, run corresponding callback
+		this.socket.on('message', (raw) => {
+			// Parse data
+			let data = raw.toString()
+			if (this.password) data = decrypt(data, this.password)
 
-        this.fetchState = setInterval(() => {
-            this.socket?.send("get-version");
-            this.socket?.send("get-editor");
-            // fetch status variables
-            GetVariables().forEach((variable) => {
-                // only for variables starting by status.*
-                if (variable.variableId.startsWith("status")) {
-                    // get status over the variableId
-                    const payload = {
-                        name: variable.variableId
-                    };
+			// Parse JSON
+			const json = JSON.parse(data)
+			if (json.resID in this.callbacks) {
+				this.callbacks[json.resID](json)
+				delete this.callbacks[json.resID]
+			}
+		})
 
-                    // send the message with action 'get-status'
-                    this.socket?.send("get-status", payload);
-                }
-            });
+		// Clear reload timers
+		if (this.timerReloadState) clearInterval(this.timerReloadState)
+		if (this.timerReloadCommands) clearInterval(this.timerReloadCommands)
 
+		// Start state reload timer
+		this.timerReloadState = setInterval(() => {
+			// Get version
+			this.send({ action: 'get-version' }, (data) => {
+				this.setVariableValues({ version: data.version })
+				this.checkFeedbacks(...feedbackVariants('version'))
+			})
 
-        }, this.config.reloadState);
-    }
+			// Get editor information
+			this.send({ action: 'get-editor' }, (data) => {
+				this.setVariableValues({
+					language: data.editor?.document.languageId,
+					lines: data.editor?.document.lineCount,
+					tab_size: data.editor?.options.tabSize,
+				})
 
-    private handleMessage(type: string, message: any) {
-        if (type === "get-version") {
-            this.setVariableValues({ version: message.version });
-        } else if (type === "get-editor") {
-            if ("editor" in message) {
-                const editor = message.editor;
-                const prevLang = this.getVariableValue("language");
-                this.setVariableValues({ language: editor.document.languageId, lines: editor.document.lineCount });
-                if (this.getVariableValue("language") !== prevLang) this.checkFeedbacks();
-            } else {
-                const changed = this.getVariableValue("language") !== "none";
-                this.setVariableValues({ language: "none", lines: 0 });
-                if (changed) this.checkFeedbacks();
-            }
-        } else if (type === "list-commands") {
-            this.setVariableValues({ commands: message.list.length });
-            this.actions.setCommands(message.list);
-        } else if (type === "get-status") {
-            const variableName = message.name;
-            const variableValue = message.value;
+				this.checkFeedbacks(
+					...feedbackVariants('language'),
+					...feedbackVariants('lines'),
+					...feedbackVariants('tab_size')
+				)
+			})
 
-            type Variables = { [key: string]: any };
+			// Get status information
+			for (const variable of variables.filter((v) => v.variableId.startsWith('status_')))
+				this.send({ action: 'get-status', name: variable.variableId }, (data) => {
+					this.setVariableValues({ [data.name]: data.value })
+					this.checkFeedbacks(...feedbackVariants(data.name))
+				})
+		}, config.reloadState)
 
-            // Check if the variable value has changed
-            if (!this.previousStatusVariables.hasOwnProperty(variableName) ||
-                 this.previousStatusVariables[variableName] !== variableValue) {
-                // Create an object to hold the variable and its value
-                const variables : Variables = {
-                    [variableName]: variableValue,
-                };
+		// Start commands reload timer
+		this.timerReloadCommands = setInterval(this.reloadCommands.bind(this), config.reloadCommands)
+	}
 
-                // Set the variable values
-                this.setVariableValues(variables);
+	getConfigFields(): SomeCompanionConfigField[] {
+		return CONFIG
+	}
 
-                // Update the previous value
-                this.previousStatusVariables[variableName] = variableValue;
+	reconnect(config: Config) {
+		// Cancel reconnect timer
+		if (this.timerReconnect) clearTimeout(this.timerReconnect)
+		this.timerReconnect = null
 
-                // Trigger checkFeedbacks
-                this.checkFeedbacks();
-            }
-        }
-    }
+		// Start reconnect timer
+		if (config.reconnect) this.timerReconnect = setTimeout(() => this.configUpdated(config), config.reconnect)
+	}
+
+	send(data: any, callback: (data: any) => void) {
+		// Check if socket is ready
+		if (!this.socket || this.socket.readyState !== WebSocket.OPEN) return
+
+		// Prepare data
+		data = { ...data, reqID: this.requestID++ }
+		let json = JSON.stringify(data)
+		if (this.password) json = encrypt(json, this.password)
+
+		// Send data
+		this.socket.send(json)
+
+		// Set callback
+		if (Object.keys(this.callbacks).length > 100) this.callbacks = {}
+		this.callbacks[data.reqID] = callback
+	}
+
+	reloadCommands() {
+		// Get commands
+		this.send({ action: 'list-commands' }, (data) => {
+			this.setVariableValues({ commands: data.list?.length })
+
+			this.checkFeedbacks(...feedbackVariants('commands'))
+
+			this.setActionDefinitions(
+				generateActions(
+					this.send.bind(this),
+					this.setVariableValues.bind(this),
+					this.reloadCommands.bind(this),
+					data.list ?? []
+				)
+			)
+		})
+	}
 }
 
-runEntrypoint(ModuleInstance, []);
+runEntrypoint(ModuleInstance, [])

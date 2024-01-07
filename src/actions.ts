@@ -1,70 +1,154 @@
-import { CompanionActionDefinitions } from "@companion-module/base";
+import { CompanionActionDefinitions, CompanionVariableValues } from '@companion-module/base'
 
-export class Actions {
-    private setActions: (actions: CompanionActionDefinitions) => void;
-    private send: (action: string, payload: any) => void;
-    private commands: string[] = [];
+export function generateActions(
+	req: (data: any, callback: (data: any) => void) => void,
+	setVars: (vars: CompanionVariableValues) => void,
+	reloadCommands: () => void,
+	commands: string[]
+): CompanionActionDefinitions {
+	let actions: CompanionActionDefinitions = {}
 
-    constructor(setActions: (actions: CompanionActionDefinitions) => void, send: (a: string, p: any) => void) {
-        this.setActions = setActions;
-        this.send = send;
-    }
+	actions['alert'] = {
+		name: 'Send notification',
+		description: 'Display a notification in the bottom right corner of the window',
+		options: [
+			{ id: 'message', type: 'textinput', label: 'Message' },
+			{
+				id: 'level',
+				type: 'dropdown',
+				label: 'Level',
+				default: 'info',
+				choices: [
+					{ id: 'info', label: 'Info' },
+					{ id: 'warning', label: 'Warning' },
+					{ id: 'error', label: 'Error' },
+				],
+			},
+			{
+				id: 'options',
+				type: 'textinput',
+				label: 'Options (comma separated)',
+				default: '',
+				tooltip: 'Each option will be displayed as a button',
+			},
+		],
+		callback: (action) =>
+			req(
+				{
+					action: 'alert',
+					message: action.options.message?.toString(),
+					level: action.options.level?.toString(),
+					options: action.options.options?.toString().split(','),
+				},
+				(res) => {
+					setVars({ response_alert: res.selected })
+				}
+			),
+	}
 
-    setCommands(commands: string[]) {
-        // Only update when command list changed
-        if (JSON.stringify(commands) == JSON.stringify(this.commands)) return;
+	actions['status'] = {
+		name: 'Display status bar message',
+		description: 'Display a message in the status bar at the bottom of the window',
+		options: [
+			{ id: 'message', type: 'textinput', label: 'Message' },
+			{ id: 'timeout', type: 'number', label: 'Timeout (ms)', default: 5000, min: 0, max: 1e9 },
+		],
+		callback: (action) =>
+			req(
+				{
+					action: 'status',
+					message: action.options.message?.toString(),
+					timeout: parseInt(action.options.timeout?.toString() || '5000'),
+				},
+				() => {}
+			),
+	}
 
-        // Set commands
-        this.commands = commands;
+	actions['input'] = {
+		name: 'Display input dialog',
+		description: 'Display a dialog with a text input field',
+		options: [
+			{ id: 'title', type: 'textinput', label: 'Title' },
+			{ id: 'placeholder', type: 'textinput', label: 'Placeholder' },
+			{ id: 'value', type: 'textinput', label: 'Default value' },
+		],
+		callback: (action) =>
+			req(
+				{
+					action: 'input',
+					title: action.options.title?.toString(),
+					placeholder: action.options.placeholder?.toString(),
+					value: action.options.value?.toString(),
+				},
+				(data) => {
+					setVars({ response_input: data.value })
+				}
+			),
+	}
 
-        // Regenerate actions
-        this.setActions({ ...this.getActions() });
-    }
+	actions['pick'] = {
+		name: 'Display picker dialog',
+		description: 'Display a dialog with a list of items to choose from',
+		options: [
+			{ id: 'title', type: 'textinput', label: 'Title' },
+			{ id: 'placeholder', type: 'textinput', label: 'Placeholder' },
+			{ id: 'items', type: 'textinput', label: 'Items (comma separated)' },
+			{ id: 'multi', type: 'checkbox', label: 'Multi select', default: false },
+		],
+		callback: (action) =>
+			req(
+				{
+					action: 'pick',
+					title: action.options.title?.toString(),
+					placeholder: action.options.placeholder?.toString(),
+					items: action.options.items?.toString().split(','),
+					multi: action.options.multi?.toString() === 'true',
+				},
+				(data) => {
+					if (Array.isArray(data.selected)) setVars({ response_pick: data.selected.join(',') })
+					else setVars({ response_pick: data.selected })
+				}
+			),
+	}
 
-    getActions(): CompanionActionDefinitions {
-        const commands = this.commands.map((command) => ({ id: command, label: command }));
+	actions['command'] = {
+		name: 'Run command',
+		description: 'Run a command in the editor',
+		options: [
+			{
+				id: 'command',
+				type: 'dropdown',
+				label: 'Command',
+				default: 'noop',
+				choices: commands.map((c) => ({ id: c, label: c })),
+				tooltip:
+					"If no commands are available, wait until they are reloaded or manually trigger the 'Reload commands' action",
+			},
+			{
+				id: 'args',
+				type: 'textinput',
+				label: 'Arguments (JSON)',
+				default: '[]',
+				tooltip: 'Some commands take additional arguments that would otherwise require user interaction',
+			},
+		],
+		callback: (action) =>
+			req(
+				{
+					action: 'run-command',
+					command: action.options.command?.toString(),
+					args: JSON.parse(action.options.args?.toString() ?? '[]'),
+				},
+				() => {}
+			),
+	}
 
-        return {
-            alert: {
-                name: "Send notification",
-                options: [
-                    { id: "message", type: "textinput", label: "Message" },
-                    {
-                        id: "level",
-                        type: "dropdown",
-                        label: "Level",
-                        choices: [
-                            { id: "info", label: "Information" },
-                            { id: "warn", label: "Warning" },
-                            { id: "error", label: "Error" },
-                        ],
-                        default: "info",
-                    },
-                ],
-                callback: (action) =>
-                    this.send("alert", {
-                        message: action.options.message?.toString(),
-                        level: action.options.level?.toString(),
-                    }),
-            },
-            status: {
-                name: "Show status",
-                options: [
-                    { id: "message", type: "textinput", label: "Message" },
-                    { id: "timeout", type: "number", label: "Timeout (ms)", min: 0, max: 60000, default: 5000 },
-                ],
-                callback: (action) =>
-                    this.send("status", {
-                        message: action.options.message?.toString(),
-                        timeout: Number.parseInt(action.options.timeout!.toString()),
-                    }),
-            },
-            command: {
-                name: "Run command",
-                options: [{ id: "command", type: "dropdown", label: "Command", choices: commands, default: "noop" }],
-                callback: (action) =>
-                    this.send("run-command", { command: action.options.command?.toString() ?? "noop" }),
-            },
-        };
-    }
+	actions['reload'] = {
+		name: 'Reload commands',
+		description: 'Reload the list of available commands',
+		options: [],
+		callback: reloadCommands,
+	}
+
+	return actions
 }

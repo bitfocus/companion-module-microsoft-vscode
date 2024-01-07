@@ -1,26 +1,26 @@
 {
-    "id": "microsoft-vscode",
-    "name": "Microsoft VSCode",
-    "shortname": "VSCode",
-    "description": "Allows bitfocus companion to trigger commands in VSCode",
-    "version": "0.0.0",
-    "license": "MIT",
-    "repository": "git+https://github.com/bitfocus/companion-module-microsoft-vscode",
-    "bugs": "https://github.com/bitfocus/companion-module-microsoft-vscode/issues",
-    "maintainers": [
-        {
-            "name": "Pascal Diehm",
-            "email": "pdiehm8@gmx.de"
-        }
-    ],
-    "runtime": {
-        "type": "node18",
-        "api": "nodejs-ipc",
-        "apiVersion": "0.0.0",
-        "entrypoint": "../out/main.js"
-    },
-    "legacyIds": [],
-    "manufacturer": "Microsoft",
-    "products": ["VSCode"],
-    "keywords": ["Code", "Visual Studio Code"]
+	"id": "microsoft-vscode",
+	"name": "Microsoft VSCode",
+	"shortname": "VSCode",
+	"description": "Allows bitfocus companion to talk to VSCode",
+	"version": "0.0.0",
+	"license": "MIT",
+	"repository": "git+https://github.com/bitfocus/companion-module-microsoft-vscode",
+	"bugs": "https://github.com/bitfocus/companion-module-microsoft-vscode/issues",
+	"maintainers": [
+		{
+			"name": "Pascal Diehm",
+			"email": "pdiehm8@gmail.com"
+		}
+	],
+	"runtime": {
+		"type": "node18",
+		"api": "nodejs-ipc",
+		"apiVersion": "0.0.0",
+		"entrypoint": "../out/main.js"
+	},
+	"legacyIds": [],
+	"manufacturer": "Microsoft",
+	"products": ["VSCode"],
+	"keywords": ["Code", "Visual Studio Code"]
 }
