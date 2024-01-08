@@ -30,46 +30,42 @@ class ModuleInstance extends InstanceBase<Config> {
 	async destroy() {
 		// Clear timers
 		if (this.timerReconnect) clearTimeout(this.timerReconnect)
+		this.timerReconnect = null
+
 		if (this.timerReloadState) clearInterval(this.timerReloadState)
+		this.timerReloadState = null
+
 		if (this.timerReloadCommands) clearInterval(this.timerReloadCommands)
+		this.timerReloadCommands = null
 
 		// Close socket connection
-		if (this.socket) this.socket.close()
+		if (this.socket) {
+			this.socket.removeAllListeners()
+			this.socket.close()
+		}
 	}
 
 	async configUpdated(config: Config) {
-		// Close existing socket connection
-		if (this.socket) this.socket.close()
+		// Set instance status
+		this.updateStatus(InstanceStatus.Connecting)
+
+		// Destroy old socket connection
+		await this.destroy()
 
 		// Set new password
 		this.password = config.password
 
 		// Start socket connection
 		this.socket = new WebSocket(`ws://${config.host}:${config.port}`)
-		this.updateStatus(InstanceStatus.Connecting)
 
 		// When socket opens, set instance status
 		this.socket.on('open', () => this.updateStatus(InstanceStatus.Ok))
 
 		// When socket closes, set instance status and try to reconnect
-		this.socket.on('close', () => {
-			// Set status
-			this.updateStatus(InstanceStatus.Disconnected)
-			this.socket = null
-
-			// Reconnect
-			this.reconnect(config)
-		})
+		this.socket.on('close', () => this.disconnected(config, true))
 
 		// When socket fails, set instance status and try to reconnect
-		this.socket.on('error', () => {
-			// Set status
-			this.updateStatus(InstanceStatus.ConnectionFailure)
-			this.socket = null
-
-			// Reconnect
-			this.reconnect(config)
-		})
+		this.socket.on('error', () => this.disconnected(config, false))
 
 		// When socket receives data, run corresponding callback
 		this.socket.on('message', (raw) => {
@@ -79,15 +75,13 @@ class ModuleInstance extends InstanceBase<Config> {
 
 			// Parse JSON
 			const json = JSON.parse(data)
+
+			// Run callback
 			if (json.resID in this.callbacks) {
 				this.callbacks[json.resID](json)
 				delete this.callbacks[json.resID]
 			}
 		})
-
-		// Clear reload timers
-		if (this.timerReloadState) clearInterval(this.timerReloadState)
-		if (this.timerReloadCommands) clearInterval(this.timerReloadCommands)
 
 		// Start state reload timer
 		this.timerReloadState = setInterval(() => {
@@ -129,10 +123,13 @@ class ModuleInstance extends InstanceBase<Config> {
 		return CONFIG
 	}
 
-	reconnect(config: Config) {
-		// Cancel reconnect timer
-		if (this.timerReconnect) clearTimeout(this.timerReconnect)
-		this.timerReconnect = null
+	disconnected(config: Config, graceful: boolean) {
+		// Set instance status
+		if (graceful) this.updateStatus(InstanceStatus.Disconnected)
+		else this.updateStatus(InstanceStatus.ConnectionFailure)
+
+		// Destroy old socket connection
+		this.destroy()
 
 		// Start reconnect timer
 		if (config.reconnect) this.timerReconnect = setTimeout(() => this.configUpdated(config), config.reconnect)
