@@ -6,7 +6,7 @@ export function generateActions(
 	reloadCommands: () => void,
 	commands: string[]
 ): CompanionActionDefinitions {
-	let actions: CompanionActionDefinitions = {}
+	const actions: CompanionActionDefinitions = {}
 
 	actions['alert'] = {
 		name: 'Send notification',

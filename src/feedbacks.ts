@@ -15,7 +15,7 @@ export function feedbackVariants(id: string): string[] {
 }
 
 export function generateFeedbacks(getVar: (name: string) => string | undefined): CompanionFeedbackDefinitions {
-	let feedbacks: CompanionFeedbackDefinitions = {}
+	const feedbacks: CompanionFeedbackDefinitions = {}
 
 	for (const variable of stringVariables) {
 		const id = variable.variableId
