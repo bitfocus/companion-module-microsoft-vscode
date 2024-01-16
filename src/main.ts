@@ -15,7 +15,7 @@ class ModuleInstance extends InstanceBase<Config> {
 	private timerReloadState: NodeJS.Timeout | null = null
 	private timerReloadCommands: NodeJS.Timeout | null = null
 
-	async init(config: Config, isFirstInit: boolean) {
+	async init(config: Config, _isFirstInit: boolean) {
 		// Load definitions
 		this.setVariableDefinitions(variables)
 		this.setFeedbackDefinitions(generateFeedbacks((name) => this.getVariableValue(name)?.toString()))
