@@ -32,6 +32,7 @@
 
 | Name                      | Description                                               | Type       |
 | ------------------------- | --------------------------------------------------------- | ---------- |
+| `clients_count`           | The number of connected VSCode instances                  | `number`   |
 | `version`                 | The version of VSCode                                     | `string`   |
 | `commands_count`          | The number of commands available                          | `number`   |
 | `debug`                   | Whether a debugging session is active                     | `boolean`  |
