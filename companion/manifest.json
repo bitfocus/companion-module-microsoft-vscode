@@ -3,7 +3,7 @@
   "name": "Microsoft VSCode",
   "shortname": "VSCode",
   "description": "Allows bitfocus companion to talk to VSCode",
-  "version": "2.0.0",
+  "version": "3.0.0",
   "license": "MIT",
   "repository": "git+https://github.com/bitfocus/companion-module-microsoft-vscode",
   "bugs": "https://github.com/bitfocus/companion-module-microsoft-vscode/issues",
