@@ -70,7 +70,7 @@
 | `editor_errors`           | The number of errors in the active editor                 | `number`   |
 | `result_alert`            | The selected option from the last alert dialog            | `string`   |
 | `result_input`            | The input from the last input dialog                      | `string`   |
-| `result_pick`             | The selected option from the last pick dialog             | `string`   |
+| `result_pick`             | The selected option from the last pick dialog             | `string[]` |
 | `error_debug_start`       | The error message from the last debug start action        | `string`   |
 | `error_activate`          | The error message from the last activate extension action | `string`   |
 
