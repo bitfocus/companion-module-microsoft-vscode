@@ -38,6 +38,7 @@ const variablesString = [
 ]
 
 const variablesNumber = [
+  { variableId: 'clients_count', name: 'Number of connected clients' },
   { variableId: 'commands_count', name: 'Number of available commands' },
   { variableId: 'debug_breakpoints', name: 'Number of breakpoints' },
   { variableId: 'extensions_count', name: 'Number of installed extensions' },
@@ -68,7 +69,7 @@ const variablesStringArray = [
 
 export class Module extends InstanceBase<Config> {
   private static instance: Module | null = null
-  private state: Client['hidden'] = { commands: [], extensions: [], extensions_active: [] }
+  private lists: Client['hidden'] = { commands: [], extensions: [], extensions_active: [] }
 
   async init(config: Config, _isFirstInit: boolean) {
     Module.instance = this
@@ -132,9 +133,15 @@ export class Module extends InstanceBase<Config> {
     if (Module.instance) Module.instance.updateStatus(status)
   }
 
+  public static updateClientCount(count: number) {
+    if (!Module.instance) return
+    Module.instance.setVariableValues({ clients_count: count })
+    Module.instance.checkFeedbacks()
+  }
+
   public static updateClient(client: Client) {
     if (!Module.instance) return
-    Module.instance.state = client.hidden
+    Module.instance.lists = client.hidden
     Module.instance.setVariableValues(client.state)
     Module.instance.generateActionDefinitions()
     Module.instance.generateFeedbackDefinitions()
@@ -197,8 +204,8 @@ export class Module extends InstanceBase<Config> {
       name: 'Command available',
       description: 'Applies when the specified command is available',
       defaultStyle: {},
-      options: [mkDropdown('command', 'Command', this.state.commands)],
-      callback: (fb) => this.state.commands.includes(op(fb, 'command')),
+      options: [mkDropdown('command', 'Command', this.lists.commands)],
+      callback: (fb) => this.lists.commands.includes(op(fb, 'command')),
     }
 
     feedbacks['extension_installed'] = {
@@ -206,8 +213,8 @@ export class Module extends InstanceBase<Config> {
       name: 'Extension installed',
       description: 'Applies when the specified extension is installed',
       defaultStyle: {},
-      options: [mkDropdown('extension', 'Extension', this.state.extensions)],
-      callback: (fb) => this.state.extensions.includes(op(fb, 'extension')),
+      options: [mkDropdown('extension', 'Extension', this.lists.extensions)],
+      callback: (fb) => this.lists.extensions.includes(op(fb, 'extension')),
     }
 
     feedbacks['extension_active'] = {
@@ -215,16 +222,16 @@ export class Module extends InstanceBase<Config> {
       name: 'Extension active',
       description: 'Applies when the specified extension is active',
       defaultStyle: {},
-      options: [mkDropdown('extension', 'Extension', this.state.extensions)],
-      callback: (fb) => this.state.extensions_active.includes(op(fb, 'extension')),
+      options: [mkDropdown('extension', 'Extension', this.lists.extensions)],
+      callback: (fb) => this.lists.extensions_active.includes(op(fb, 'extension')),
     }
 
     this.setFeedbackDefinitions(feedbacks)
   }
 
   private generateActionDefinitions() {
-    const cmds = this.state.commands.map((command) => ({ id: command, label: command }))
-    const exts = this.state.extensions.map((extension) => ({ id: extension, label: extension }))
+    const cmds = this.lists.commands.map((command) => ({ id: command, label: command }))
+    const exts = this.lists.extensions.map((extension) => ({ id: extension, label: extension }))
     const lvls = [
       { id: 'info', label: 'Info' },
       { id: 'warn', label: 'Warning' },

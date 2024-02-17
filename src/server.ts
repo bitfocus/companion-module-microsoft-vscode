@@ -112,9 +112,12 @@ export function startServer(host: string, port: number) {
 
   server.on('connection', (con) => {
     clients.push({ socket: con, state: { ...defaultState }, hidden: { ...defaultHidden } })
+    Module.updateClientCount(clients.length)
 
     con.on('close', () => {
       clients = clients.filter((c) => c.socket.readyState === c.socket.OPEN)
+      Module.updateClientCount(clients.length)
+
       if (primary?.socket === con) {
         primary = null
         Module.updateClient({ socket: con, state: { ...defaultState }, hidden: { ...defaultHidden } })
