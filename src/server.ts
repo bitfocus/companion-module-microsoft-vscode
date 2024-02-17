@@ -158,7 +158,13 @@ export async function request(data: Request): Promise<Response> {
 
 function handleMessage(client: Client, message: string) {
   if (config.password) message = decrypt(message, config.password)
-  const data = JSON.parse(message)
+
+  let data
+  try {
+    data = JSON.parse(message)
+  } catch (e) {
+    return
+  }
 
   if ('id' in data) {
     const callback = callbacks[data.id]
