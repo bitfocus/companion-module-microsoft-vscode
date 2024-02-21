@@ -1,0 +1,10 @@
+{
+  "name": "Node 18",
+  "image": "mcr.microsoft.com/devcontainers/typescript-node:1-18-bookworm",
+  "postStartCommand": "yarn install",
+  "customizations": {
+    "vscode": {
+      "extensions": ["streetsidesoftware.code-spell-checker", "esbenp.prettier-vscode"]
+    }
+  }
+}
