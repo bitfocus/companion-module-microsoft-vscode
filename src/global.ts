@@ -105,6 +105,5 @@ export function decrypt(data: string, password: string): string {
     }
   }
 
-  if (decrypted[0] === '{') return decrypted.join('') // TODO: Remove this when all communication is padded
   return decrypted.join('').substring(1, decrypted.length)
 }
