@@ -1,27 +1,46 @@
 {
-  "name": "microsoft-vscode",
-  "version": "3.0.0",
-  "main": "out/main.js",
-  "scripts": {
-    "build": "tsc",
-    "watch": "tsc --watch"
-  },
-  "license": "MIT",
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/bitfocus/companion-module-microsoft-vscode.git"
-  },
-  "dependencies": {
-    "@companion-module/base": "~1.8.0",
-    "ws": "^8.12.1"
-  },
-  "devDependencies": {
-    "@companion-module/tools": "^1.4.2",
-    "@types/node": "^20.10.7",
-    "@types/ws": "^8.5.4",
-    "@typescript-eslint/eslint-plugin": "^7.14.1",
-    "@typescript-eslint/parser": "^7.14.1",
-    "eslint": "^9.5.0",
-    "typescript": "^5.3.3"
-  }
+	"name": "microsoft-vscode",
+	"version": "3.0.0",
+	"main": "dist/main.js",
+	"type": "module",
+	"scripts": {
+		"postinstall": "husky",
+		"format": "prettier -w .",
+		"package": "yarn build && companion-module-build",
+		"build": "rimraf dist && yarn build:main",
+		"build:main": "tsc -p tsconfig.build.json",
+		"dev": "tsc -p tsconfig.build.json --watch",
+		"lint:raw": "eslint",
+		"lint": "yarn lint:raw ."
+	},
+	"license": "MIT",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/bitfocus/companion-module-microsoft-vscode.git"
+	},
+	"dependencies": {
+		"@companion-module/base": "~1.10.0",
+		"ws": "^8.18.0"
+	},
+	"devDependencies": {
+		"@companion-module/tools": "^2.0.0",
+		"@types/jest": "^29.5.12",
+		"@types/ws": "^8.5.12",
+		"eslint": "^9.9.1",
+		"husky": "^9.1.5",
+		"lint-staged": "^15.2.9",
+		"prettier": "^3.3.3",
+		"typescript": "~5.5.4",
+		"typescript-eslint": "^8.2.0"
+	},
+	"prettier": "@companion-module/tools/.prettierrc.json",
+	"lint-staged": {
+		"*.{css,json,md,scss}": [
+			"prettier --write"
+		],
+		"*.{ts,tsx,js,jsx}": [
+			"yarn lint:raw --fix"
+		]
+	},
+	"packageManager": "yarn@4.4.1"
 }

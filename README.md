@@ -1,10 +1,11 @@
 # companion-module-microsoft-vscode
 
+See [HELP.md](./companion/HELP.md) and [LICENSE](./LICENSE)
+
 ## Getting started
 
-To build the module, run `yarn build`.
-You can also start a watcher: `yarn watch`.
+Executing a `yarn` command should perform all necessary steps to develop the module, if it does not then follow the steps below.
 
-## About the module
+The module can be built once with `yarn build`. This should be enough to get the module to be loadable by companion.
 
-See [here](companion/HELP.md) for the module documentation.
+While developing the module, by using `yarn dev` the compiler will be run in watch mode to recompile the files on change.
