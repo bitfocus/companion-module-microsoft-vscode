@@ -108,7 +108,17 @@ export function configureServer(password: string, sticky: boolean): void {
 
 export function startServer(host: string, port: number): void {
 	server?.close()
-	server = new WebSocketServer({ host: host === '' ? undefined : host, port })
+	try {
+		server = new WebSocketServer({ host: host === '' ? undefined : host, port })
+	} catch (error: any) {
+		Module.updateStatus(InstanceStatus.BadConfig, 'unable to start server')
+		Module.log('error', `unable to start server: ${error.message ?? 'unknown error'}`)
+		return
+	}
+
+	server.on('error', (err) => {
+		Module.log('error', `server error: ${err.message}`)
+	})
 
 	server.on('connection', (con) => {
 		clients.push({ socket: con, state: { ...defaultState }, hidden: { ...defaultHidden } })

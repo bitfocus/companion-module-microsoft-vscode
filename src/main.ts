@@ -4,6 +4,7 @@ import {
 	CompanionFeedbackDefinitions,
 	InstanceBase,
 	InstanceStatus,
+	LogLevel,
 	Regex,
 	SomeCompanionConfigField,
 	SomeCompanionFeedbackInputField,
@@ -129,8 +130,12 @@ export class Module extends InstanceBase<Config> {
 		]
 	}
 
-	public static updateStatus(status: InstanceStatus): void {
-		if (Module.instance) Module.instance.updateStatus(status)
+	public static updateStatus(status: InstanceStatus, message?: string): void {
+		if (Module.instance) Module.instance.updateStatus(status, message)
+	}
+
+	public static log(level: LogLevel, message: string): void {
+		if (Module.instance) Module.instance.log(level, message)
 	}
 
 	public static updateClientCount(count: number): void {
