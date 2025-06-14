@@ -1,6 +1,6 @@
 {
 	"name": "microsoft-vscode",
-	"version": "3.0.1",
+	"version": "3.0.2",
 	"main": "dist/main.js",
 	"type": "module",
 	"scripts": {
